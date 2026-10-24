@@ -1,242 +1,124 @@
 #include <SoftwareSerial.h>
 
+#define T1_MIN 0
+#define T1_MAX 120
+
+#define T2_MIN 121
+#define T2_MAX 280
+
+#define T3_MIN 281
+#define T3_MAX 420
+
+#define T4_MIN 421
+#define T4_MAX 550
+
+#define T5_MIN 551
+#define T5_MAX 850
+
+#define LIBRE 850
 
 
-// void setup() {
+
+byte leerTecla() {
+    anal_digit(A0);
+  int valor = anal_digit(A0);
 
 
-// }
+  if (valor > LIBRE) return 0;
+  if (valor >= T5_MIN && valor <= T5_MAX) return 5;
+  if (valor >= T4_MIN && valor <= T4_MAX) return 4;
+  if (valor >= T3_MIN && valor <= T3_MAX) return 3;
+  if (valor >= T2_MIN && valor <= T2_MAX) return 2;
+  if (valor >= T1_MIN && valor <= T1_MAX) return 1;
 
-// void loop() {
-//   int i = 0;
-//   byte boton = 0;
-//   byte tecla;
-//   int valor;
+  return 0;
+}
 
-//   Serial.println("");
-//   Serial.println("Teclado Iniciado");
+byte Filtrar_teclado() {
+  byte teclaActual = 0;
+  byte teclaAnterior = 0;
+  int contador = 0;
 
-//   while(true){  
-//       //Leer_teclado_nf();
+  while (true) {
+    teclaActual = leerTecla();
 
-//       Serial.println();
-//       Serial.print(i++);
-//       Serial.print(" Tecla pulsada...    ");
-//       Serial.print(tecla = Filtrar_teclado());
-//       Serial.print(" (");
-//       Serial.print(valor);
-//       Serial.print(") Procesando tecla... Esperando fin de tecla...");
-
-//      // Teclado_libre();  //Esperamos a que se libere el teclado
-
-//       Serial.println();
-
-//     int repe = 500;
-
-//     while(tecla == Repetir_tecla(tecla, repe)){
-
-//         //Si (tecla != 0)
-//         Serial.println();
-//         Serial.print("  Tecla ");
-//         Serial.print(tecla);
-//         Serial.print("  Repetida. Procesando tecla....");
-
-//         repe = 200;       //Disminuimos tiempo necesario para que se cuente como tecla repetida
-//     }
-//   }
-// }
-
-byte Repetir_tecla(byte tecla, int espera){
-  byte boton = 255;
-  int Fi[5] = {0, 0, 0, 0, 0};
-  int j; 
-  int flag = 0;
-
-  //Serial.println(" Entrando en repetición ");
-
-  for(j = 0; j <= espera && flag == 0; j++){
-    int valor = analogRead(A0);
-
-    switch(tecla){
-      case 1: 
-        if(valor >= 0 && valor < 70){
-          if(Fi[0]++ == espera){
-            boton = 1;
-          }
-        }
-        else boton = 0;
-
-        break;
-
-      case 2: 
-        if(valor >= 70 && valor < 234){
-          if(Fi[1]++ == espera){
-            boton = 2;
-          }
-        }
-        else boton = 0;
-        break;
-
-      case 3: 
-        if(valor >= 234 && valor < 414){
-           if(Fi[2]++ == espera){
-            boton = 3;
-           }
-        }
-        else boton = 0;
-        break;
-
-      case 4: 
-        if(valor >= 414 && valor < 600){
-          if(Fi[3]++ == espera)
-            boton = 4;
-        }
-        else boton = 0;
-        break;
-
-      case 5: 
-        if(valor >= 600 && valor < 900){
-          if(Fi[4]++ == espera)
-            boton = 5;
-        }
-        else boton = 0;
-        break;
-
-      default:
-        boton = 0;
-        break;
+    if (teclaActual == teclaAnterior && teclaActual != 0) {
+      contador++;
+      if (contador >= 5) return teclaActual;
+    } else {
+      contador = 0;
     }
 
-    if(boton != 255){       //Verificar si esto en verdad está bien
-      flag++;
-    }
-
-    delay(1);
+    teclaAnterior = teclaActual;
+    delay(5);
   }
+}
 
-  if (boton == 0){
-    Teclado_libre();
+bool repetirTecla(byte tecla, unsigned long tiempo) {
+  unsigned long inicio = millis();
+
+  while (millis() - inicio < tiempo) {
+    if (leerTecla() != tecla) return false;
   }
-  return boton;
+  return true;
 }
 
 
 
+byte leerTecladoEstable() {
+  static byte teclaAnterior = 0;
+  static unsigned long tCambio = 0;
+  static unsigned long tRepeticion = 0;
+  unsigned long mantenido = 0;
+  unsigned long intervalo;
 
-byte Filtrar_teclado(){      //Esperar pulsación y filtrar rebotes
-  byte boton = 0;
-  byte Fi[5] = {5, 5, 5, 5, 5};
+  byte teclaActual = leerTecla();   // lectura analógica simple
+  unsigned long ahora = millis();
 
-  while(boton == 0){
-    int valor = analogRead(A0);
-    
-    if(valor > 900){
-      for(int i = 0; i < 5; i++){       //Reiniciamos Fi
-        Fi[i] = 5;
-      }
-    }
+  if (teclaActual != teclaAnterior) {
+    tCambio = ahora;
+    teclaAnterior = teclaActual;
 
-  else if(valor >= 580){      //ESTABA EN 600
-    Fi[4]--;
-
-      for(int i = 0; i < 5; i++){ 
-        if(i != 4)      //Reiniciamos Fi
-          Fi[i] = 5;
-      }
+    return 0;
   }
-  else if(valor >= 414){
-    Fi[3]--;
+  mantenido = ahora - tCambio;
 
-        for(int i = 0; i < 5; i++){ 
-          if(i != 3)      //Reiniciamos Fi
-            Fi[i] = 5;
-      }
-  }
-
-  else if(valor >= 234){
-    Fi[2]--;
+  if (mantenido < 82)
+    return 0; 
   
-        for(int i = 0; i < 5; i++){ 
-          if(i != 2)      //Reiniciamos Fi
-            Fi[i] = 5;
-      }
+  if (teclaActual == 0) return 0;
+
+
+  if      (mantenido < 1000)  intervalo = 500;  
+  else if (mantenido < 2000)  intervalo = 300;  
+  else if (mantenido < 3000)  intervalo = 150;   
+  else                        intervalo = 80;   
+
+  if((ahora - tRepeticion) >= intervalo) {
+    Serial.println(teclaActual);
+    tRepeticion = ahora;
+    return teclaActual;
   }
 
-  else if(valor >= 100){        //Antes estaba en 73
-    Fi[1]--;
-
-        for(int i = 0; i < 5; i++){ 
-          if(i != 1)      //Reiniciamos Fi
-            Fi[i] = 5;
-      }
-  }
-
-  else if(valor >= 0){
-    Fi[0]--;
-
-        for(int i = 0; i < 5; i++){ 
-          if(i != 0)      //Reiniciamos Fi
-            Fi[i] = 5;
-      }
-  }
-
-  for(int i = 0; i < 5; i++){       //Verificamos si Fi == 0
-        if(Fi[i] == 0){
-          boton = i + 1;
-        }
-      }
-
-  }
-  Serial.println(boton);
-
-  return boton;
+  return 0;
 }
 
-
-void Teclado_libre(){
-  int valor = analogRead(A0);
-  while(valor < 900){
-    valor = analogRead(A0);
-  }
-}
-
-
-
-byte Leer_teclado_nf() {
-  byte boton = 255;
-  int valor = analogRead(A0);
-
- /* while(valor > 900){     Quito esto para que no se bloquee y se actualize el lector del sensor
-   boton = 0;
-   valor = analogRead(A0);
-  } */
-
-  if(valor >= 650){     //ESTABA A 600
-    boton = 5;
-  }
-  else if(valor >= 414){
-    boton = 4;
+unsigned int anal_digit(uint8_t canal) {
+  uint8_t ch;
+  switch(canal) {
+    case A0: ch = 7; break;
+    case A1: ch = 6; break;
+    case A2: ch = 5; break;
+    case A3: ch = 4; break;
+    case A4: ch = 1; break;
+    case A5: ch = 0; break;
+    default: ch = canal & 0x0F; break;
   }
 
-  else if(valor >= 234){
-    boton = 3;
-  }
-
-  else if(valor >= 70){
-    boton = 2;
-  }
-
-  else if(valor >= 0){
-    boton = 1;
-  }
-
-  // Serial.print(valor);
-  // Serial.print(" que es la tecla .... ");
-  // Serial.print(boton);
-  // Serial.println();
-
-
-  return boton;
+  ADMUX = (1 << REFS0) | (ch & 0x0F);
+  sbi(ADCSRA, ADSC);
+  while (ADCSRA & (1 << ADSC));
+  return ADC;
 }
 
 

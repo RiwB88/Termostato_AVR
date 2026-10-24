@@ -80,7 +80,7 @@ void LCD_Reset(){
   LCD_command(0x28);     //Binario 00101000
   delayMicroseconds(37);
 
-  LCD_command(0x0C);                    //LCD_command(0x08);    //Binario 00001000
+  LCD_command(0x0C);                    //LCD_command(0x08);    //Binario 00001000    En el manual es distinto a como dijeron en clase o por lo menos funciona así
   delayMicroseconds(37);
 
   LCD_command(0x01);    //Binario 00000001
